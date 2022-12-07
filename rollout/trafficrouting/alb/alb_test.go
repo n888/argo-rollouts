@@ -1651,7 +1651,7 @@ func TestSetHeaderRouteMultiIngress(t *testing.T) {
 	ro := fakeRolloutWithMultiIngress(STABLE_SVC, CANARY_SVC, nil, "ingress", "multi-ingress", 443)
 	i := ingress("ingress", STABLE_SVC, CANARY_SVC, STABLE_SVC, 443, 10, ro.Name, false)
 	mi := ingress("multi-ingress", STABLE_SVC, CANARY_SVC, STABLE_SVC, 443, 10, ro.Name, false)
-	client := fake.NewSimpleClientset()
+	client := fake.NewSimpleClientset(i, mi)
 	k8sI := kubeinformers.NewSharedInformerFactory(client, 0)
 	k8sI.Extensions().V1beta1().Ingresses().Informer().GetIndexer().Add(i)
 	k8sI.Extensions().V1beta1().Ingresses().Informer().GetIndexer().Add(mi)
