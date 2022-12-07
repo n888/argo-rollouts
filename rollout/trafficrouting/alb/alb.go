@@ -74,43 +74,60 @@ func (r *Reconciler) Type() string {
 
 // SetWeight modifies ALB Ingress resources to reach desired state
 func (r *Reconciler) SetWeight(desiredWeight int32, additionalDestinations ...v1alpha1.WeightDestination) error {
-	ctx := context.TODO()
-	rollout := r.cfg.Rollout
-	ingressName := rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress
-	ingress, err := r.cfg.IngressWrapper.GetCached(rollout.Namespace, ingressName)
-	if err != nil {
-		return err
-	}
-	actionService := rollout.Spec.Strategy.Canary.StableService
-	if rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService != "" {
-		actionService = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService
-	}
-	port := rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort
-	if !ingressutil.HasRuleWithService(ingress, actionService) {
-		return fmt.Errorf("ingress does not have service `%s` in rules", actionService)
+	// Set weight for additional ingresses if present
+	if ingresses := r.cfg.Rollout.Spec.Strategy.Canary.TrafficRouting.ALB.AdditionalIngresses; ingresses != nil {
+		// Fail out if there is an issue setting weight on additional ingresses.
+		// Fundamental assumption is that each additional Ingress is equal in importance
+		// as primary Ingress resource.
+		if err := r.SetWeightPerIngress(desiredWeight, ingresses, additionalDestinations...); err != nil {
+			return err
+		}
 	}
 
-	desiredAnnotations, err := getDesiredAnnotations(ingress, rollout, port, desiredWeight, additionalDestinations...)
-	if err != nil {
-		return err
-	}
-	desiredIngress := ingressutil.NewIngressWithAnnotations(ingress.Mode(), desiredAnnotations)
-	patch, modified, err := ingressutil.BuildIngressPatch(ingress.Mode(), ingress, desiredIngress, ingressutil.WithAnnotations())
-	if err != nil {
-		return nil
-	}
-	if !modified {
-		r.log.Info("no changes to the ALB Ingress")
-		return nil
-	}
-	r.log.WithField("patch", string(patch)).Debug("applying ALB Ingress patch")
-	r.log.WithField("desiredWeight", desiredWeight).Info("updating ALB Ingress")
-	r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: "PatchingALBIngress"}, "Updating Ingress `%s` to desiredWeight '%d'", ingressName, desiredWeight)
+	return r.SetWeightPerIngress(desiredWeight, []string{r.cfg.Rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress}, additionalDestinations...)
+}
 
-	_, err = r.cfg.IngressWrapper.Patch(ctx, ingress.GetNamespace(), ingress.GetName(), types.MergePatchType, patch, metav1.PatchOptions{})
-	if err != nil {
-		r.log.WithField("err", err.Error()).Error("error patching alb ingress")
-		return fmt.Errorf("error patching alb ingress `%s`: %v", ingressName, err)
+// SetWeightPerIngress modifies each ALB Ingress resource to reach desired state in the scenario of a rollout
+func (r *Reconciler) SetWeightPerIngress(desiredWeight int32, ingresses []string, additionalDestinations ...v1alpha1.WeightDestination) error {
+	for _, ingress := range ingresses {
+		ctx := context.TODO()
+		rollout := r.cfg.Rollout
+		ingressName := ingress
+		ingress, err := r.cfg.IngressWrapper.GetCached(rollout.Namespace, ingressName)
+		if err != nil {
+			return err
+		}
+		actionService := rollout.Spec.Strategy.Canary.StableService
+		if rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService != "" {
+			actionService = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService
+		}
+		port := rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort
+		if !ingressutil.HasRuleWithService(ingress, actionService) {
+			return fmt.Errorf("ingress does not have service `%s` in rules", actionService)
+		}
+
+		desiredAnnotations, err := getDesiredAnnotations(ingress, rollout, port, desiredWeight, additionalDestinations...)
+		if err != nil {
+			return err
+		}
+		desiredIngress := ingressutil.NewIngressWithAnnotations(ingress.Mode(), desiredAnnotations)
+		patch, modified, err := ingressutil.BuildIngressPatch(ingress.Mode(), ingress, desiredIngress, ingressutil.WithAnnotations())
+		if err != nil {
+			return nil
+		}
+		if !modified {
+			r.log.Info("no changes to the ALB Ingress")
+			return nil
+		}
+		r.log.WithField("patch", string(patch)).Debug("applying ALB Ingress patch")
+		r.log.WithField("desiredWeight", desiredWeight).Info("updating ALB Ingress")
+		r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: "PatchingALBIngress"}, "Updating Ingress `%s` to desiredWeight '%d'", ingressName, desiredWeight)
+
+		_, err = r.cfg.IngressWrapper.Patch(ctx, ingress.GetNamespace(), ingress.GetName(), types.MergePatchType, patch, metav1.PatchOptions{})
+		if err != nil {
+			r.log.WithField("err", err.Error()).Error("error patching alb ingress")
+			return fmt.Errorf("error patching alb ingress `%s`: %v", ingressName, err)
+		}
 	}
 	return nil
 }
@@ -190,83 +207,99 @@ func (r *Reconciler) VerifyWeight(desiredWeight int32, additionalDestinations ..
 		r.cfg.Status.ALB = &v1alpha1.ALBStatus{}
 	}
 
-	ctx := context.TODO()
-	rollout := r.cfg.Rollout
-	ingressName := rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress
-	ingress, err := r.cfg.IngressWrapper.GetCached(rollout.Namespace, ingressName)
-	if err != nil {
-		return pointer.BoolPtr(false), err
-	}
-	resourceIDToDest := map[string]v1alpha1.WeightDestination{}
-
-	stableService, canaryService := trafficrouting.GetStableAndCanaryServices(rollout)
-	canaryResourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), canaryService, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
-	stableResourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), stableService, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
-
-	for _, dest := range additionalDestinations {
-		resourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), dest.ServiceName, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
-		resourceIDToDest[resourceID] = dest
-	}
-
-	loadBalancerStatus := ingress.GetLoadBalancerStatus()
-	if len(loadBalancerStatus.Ingress) == 0 {
-		r.log.Infof("LoadBalancer not yet allocated")
-	}
-
-	numVerifiedWeights := 0
-	for _, lbIngress := range loadBalancerStatus.Ingress {
-		if lbIngress.Hostname == "" {
-			continue
+	// Set weight for additional ingresses if present
+	if ingresses := r.cfg.Rollout.Spec.Strategy.Canary.TrafficRouting.ALB.AdditionalIngresses; ingresses != nil {
+		// Fail out if there is an issue verifying weight on additional ingresses.
+		// Fundamental assumption is that each additional Ingress is equal in importance
+		// as primary Ingress resource.
+		if weightVerified, err := r.VerifyWeightPerIngress(desiredWeight, ingresses, additionalDestinations...); err != nil {
+			return weightVerified, err
 		}
-		lb, err := r.aws.FindLoadBalancerByDNSName(ctx, lbIngress.Hostname)
+	}
+
+	return r.VerifyWeightPerIngress(desiredWeight, []string{r.cfg.Rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress}, additionalDestinations...)
+}
+
+func (r *Reconciler) VerifyWeightPerIngress(desiredWeight int32, ingresses []string, additionalDestinations ...v1alpha1.WeightDestination) (*bool, error) {
+	var numVerifiedWeights int
+	for _, ingress := range ingresses {
+		ctx := context.TODO()
+		rollout := r.cfg.Rollout
+		ingressName := ingress
+		ingress, err := r.cfg.IngressWrapper.GetCached(rollout.Namespace, ingressName)
 		if err != nil {
-			r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifyErrorReason}, conditions.TargetGroupVerifyErrorMessage, canaryService, "unknown", err.Error())
 			return pointer.BoolPtr(false), err
 		}
-		if lb == nil || lb.LoadBalancerArn == nil {
-			r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.LoadBalancerNotFoundReason}, conditions.LoadBalancerNotFoundMessage, lbIngress.Hostname)
-			return pointer.BoolPtr(false), nil
+		resourceIDToDest := map[string]v1alpha1.WeightDestination{}
+
+		stableService, canaryService := trafficrouting.GetStableAndCanaryServices(rollout)
+		canaryResourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), canaryService, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
+		stableResourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), stableService, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
+
+		for _, dest := range additionalDestinations {
+			resourceID := aws.BuildTargetGroupResourceID(rollout.Namespace, ingress.GetName(), dest.ServiceName, rollout.Spec.Strategy.Canary.TrafficRouting.ALB.ServicePort)
+			resourceIDToDest[resourceID] = dest
 		}
 
-		r.cfg.Status.ALB.LoadBalancer.Name = *lb.LoadBalancerName
-		r.cfg.Status.ALB.LoadBalancer.ARN = *lb.LoadBalancerArn
-
-		lbTargetGroups, err := r.aws.GetTargetGroupMetadata(ctx, *lb.LoadBalancerArn)
-		if err != nil {
-			r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifyErrorReason}, conditions.TargetGroupVerifyErrorMessage, canaryService, "unknown", err.Error())
-			return pointer.BoolPtr(false), err
+		loadBalancerStatus := ingress.GetLoadBalancerStatus()
+		if len(loadBalancerStatus.Ingress) == 0 {
+			r.log.Infof("LoadBalancer not yet allocated")
 		}
-		logCtx := r.log.WithField("lb", *lb.LoadBalancerArn)
-		for _, tg := range lbTargetGroups {
-			if tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID] == canaryResourceID {
-				r.cfg.Status.ALB.CanaryTargetGroup.Name = *tg.TargetGroupName
-				r.cfg.Status.ALB.CanaryTargetGroup.ARN = *tg.TargetGroupArn
-				if tg.Weight != nil {
-					logCtx := logCtx.WithField("tg", *tg.TargetGroupArn)
-					logCtx.Infof("canary weight of %s (desired: %d, current: %d)", canaryResourceID, desiredWeight, *tg.Weight)
-					verified := *tg.Weight == desiredWeight
-					if verified {
-						numVerifiedWeights += 1
-						r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifiedReason}, conditions.TargetGroupVerifiedWeightsMessage, canaryService, *tg.TargetGroupArn, desiredWeight)
-					} else {
-						r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupUnverifiedReason}, conditions.TargetGroupUnverifiedWeightsMessage, canaryService, *tg.TargetGroupArn, desiredWeight, *tg.Weight)
+
+		for _, lbIngress := range loadBalancerStatus.Ingress {
+			if lbIngress.Hostname == "" {
+				continue
+			}
+			lb, err := r.aws.FindLoadBalancerByDNSName(ctx, lbIngress.Hostname)
+			if err != nil {
+				r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifyErrorReason}, conditions.TargetGroupVerifyErrorMessage, canaryService, "unknown", err.Error())
+				return pointer.BoolPtr(false), err
+			}
+			if lb == nil || lb.LoadBalancerArn == nil {
+				r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.LoadBalancerNotFoundReason}, conditions.LoadBalancerNotFoundMessage, lbIngress.Hostname)
+				return pointer.BoolPtr(false), nil
+			}
+
+			r.cfg.Status.ALB.LoadBalancer.Name = *lb.LoadBalancerName
+			r.cfg.Status.ALB.LoadBalancer.ARN = *lb.LoadBalancerArn
+
+			lbTargetGroups, err := r.aws.GetTargetGroupMetadata(ctx, *lb.LoadBalancerArn)
+			if err != nil {
+				r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifyErrorReason}, conditions.TargetGroupVerifyErrorMessage, canaryService, "unknown", err.Error())
+				return pointer.BoolPtr(false), err
+			}
+			logCtx := r.log.WithField("lb", *lb.LoadBalancerArn)
+			for _, tg := range lbTargetGroups {
+				if tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID] == canaryResourceID {
+					r.cfg.Status.ALB.CanaryTargetGroup.Name = *tg.TargetGroupName
+					r.cfg.Status.ALB.CanaryTargetGroup.ARN = *tg.TargetGroupArn
+					if tg.Weight != nil {
+						logCtx := logCtx.WithField("tg", *tg.TargetGroupArn)
+						logCtx.Infof("canary weight of %s (desired: %d, current: %d)", canaryResourceID, desiredWeight, *tg.Weight)
+						verified := *tg.Weight == desiredWeight
+						if verified {
+							numVerifiedWeights += 1
+							r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifiedReason}, conditions.TargetGroupVerifiedWeightsMessage, canaryService, *tg.TargetGroupArn, desiredWeight)
+						} else {
+							r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupUnverifiedReason}, conditions.TargetGroupUnverifiedWeightsMessage, canaryService, *tg.TargetGroupArn, desiredWeight, *tg.Weight)
+						}
 					}
-				}
-			} else if dest, ok := resourceIDToDest[tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID]]; ok {
-				if tg.Weight != nil {
-					logCtx := logCtx.WithField("tg", *tg.TargetGroupArn)
-					logCtx.Infof("%s weight of %s (desired: %d, current: %d)", dest.ServiceName, tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID], dest.Weight, *tg.Weight)
-					verified := *tg.Weight == dest.Weight
-					if verified {
-						numVerifiedWeights += 1
-						r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifiedReason}, conditions.TargetGroupVerifiedWeightsMessage, dest.ServiceName, *tg.TargetGroupArn, dest.Weight)
-					} else {
-						r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupUnverifiedReason}, conditions.TargetGroupUnverifiedWeightsMessage, dest.ServiceName, *tg.TargetGroupArn, dest.Weight, *tg.Weight)
+				} else if dest, ok := resourceIDToDest[tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID]]; ok {
+					if tg.Weight != nil {
+						logCtx := logCtx.WithField("tg", *tg.TargetGroupArn)
+						logCtx.Infof("%s weight of %s (desired: %d, current: %d)", dest.ServiceName, tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID], dest.Weight, *tg.Weight)
+						verified := *tg.Weight == dest.Weight
+						if verified {
+							numVerifiedWeights += 1
+							r.cfg.Recorder.Eventf(rollout, record.EventOptions{EventReason: conditions.TargetGroupVerifiedReason}, conditions.TargetGroupVerifiedWeightsMessage, dest.ServiceName, *tg.TargetGroupArn, dest.Weight)
+						} else {
+							r.cfg.Recorder.Warnf(rollout, record.EventOptions{EventReason: conditions.TargetGroupUnverifiedReason}, conditions.TargetGroupUnverifiedWeightsMessage, dest.ServiceName, *tg.TargetGroupArn, dest.Weight, *tg.Weight)
+						}
 					}
+				} else if tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID] == stableResourceID {
+					r.cfg.Status.ALB.StableTargetGroup.Name = *tg.TargetGroupName
+					r.cfg.Status.ALB.StableTargetGroup.ARN = *tg.TargetGroupArn
 				}
-			} else if tg.Tags[aws.AWSLoadBalancerV2TagKeyResourceID] == stableResourceID {
-				r.cfg.Status.ALB.StableTargetGroup.Name = *tg.TargetGroupName
-				r.cfg.Status.ALB.StableTargetGroup.ARN = *tg.TargetGroupArn
 			}
 		}
 	}

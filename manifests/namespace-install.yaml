@@ -11690,6 +11690,10 @@ spec:
                                 type: string
                               ingress:
                                 type: string
+                              additionalIngresses:
+                                items:
+                                  type: string
+                                type: array
                               rootService:
                                 type: string
                               servicePort:
