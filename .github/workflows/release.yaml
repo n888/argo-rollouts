@@ -66,6 +66,10 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},prefix=v,value=${{ github.event.inputs.tag }}
+          flavor: |
+            latest=false
 
 #      - name: Docker meta (plugin)
 #        id: plugin-meta
@@ -117,11 +121,13 @@ jobs:
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v4.0.0
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+        # platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.controller-meta.outputs.tags }}
-          provenance: false
-          sbom: false
+          labels: ${{ steps.meta.outputs.labels }}
+        # provenance: false
+        # sbom: false
 
 #      - name: Build and push (plugin-image)
 #        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v4.0.0
