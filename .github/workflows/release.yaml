@@ -47,17 +47,25 @@ jobs:
           df -ah
           docker buildx du
 
-      - name: Docker meta (controller)
-        id: controller-meta
+#      - name: Docker meta (controller)
+#        id: controller-meta
+#        uses: docker/metadata-action@v4
+#        with:
+#          images: |
+#            quay.io/argoproj/argo-rollouts
+#          # ghcr.io/argoproj/argo-rollouts
+#          tags: |
+#            type=semver,pattern={{version}},prefix=v,value=${{ github.event.inputs.tag }}
+#          flavor: |
+#            latest=false
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
         uses: docker/metadata-action@v4
         with:
-          images: |
-            quay.io/argoproj/argo-rollouts
-          # ghcr.io/argoproj/argo-rollouts
-          tags: |
-            type=semver,pattern={{version}},prefix=v,value=${{ github.event.inputs.tag }}
-          flavor: |
-            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
 #      - name: Docker meta (plugin)
 #        id: plugin-meta
@@ -100,8 +108,8 @@ jobs:
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        id: controller-meta
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
