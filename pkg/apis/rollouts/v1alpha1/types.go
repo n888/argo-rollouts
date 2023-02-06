@@ -56,6 +56,9 @@ type RolloutSpec struct {
 	// Defaults to 0 (pod will be considered available as soon as it is ready)
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty" protobuf:"varint,4,opt,name=minReadySeconds"`
+	// The window in which a rollback will be fast tracked (fully promoted)
+	// +optional
+	RollbackWindow *RollbackWindowSpec `json:"rollbackWindow,omtempty" protobuf:"bytes,13,opt,name=rollbackWindow"`
 	// The deployment strategy to use to replace existing pods with new ones.
 	// +optional
 	Strategy RolloutStrategy `json:"strategy" protobuf:"bytes,5,opt,name=strategy"`
@@ -307,6 +310,9 @@ type CanaryStrategy struct {
 	DynamicStableScale bool `json:"dynamicStableScale,omitempty" protobuf:"varint,14,opt,name=dynamicStableScale"`
 	// PingPongSpec holds the ping and pong services
 	PingPong *PingPongSpec `json:"pingPong,omitempty" protobuf:"varint,15,opt,name=pingPong"`
+	// Assuming the desired number of pods in a stable or canary ReplicaSet is not zero, then make sure it is at least
+	// MinPodsPerReplicaSet for High Availability. Only applicable for TrafficRoutedCanary
+	MinPodsPerReplicaSet *int32 `json:"minPodsPerReplicaSet,omitempty" protobuf:"varint,16,opt,name=minPodsPerReplicaSet"`
 }
 
 // PingPongSpec holds the ping and pong service name.
@@ -369,6 +375,8 @@ type RolloutTrafficRouting struct {
 	// A list of HTTP routes that Argo Rollouts manages, the order of this array also becomes the precedence in the upstream
 	// traffic router.
 	ManagedRoutes []MangedRoutes `json:"managedRoutes,omitempty" protobuf:"bytes,8,rep,name=managedRoutes"`
+	// Apisix holds specific configuration to use Apisix to route traffic
+	Apisix *ApisixTrafficRouting `json:"apisix,omitempty" protobuf:"bytes,9,opt,name=apisix"`
 }
 
 type MangedRoutes struct {
@@ -381,6 +389,20 @@ type MangedRoutes struct {
 type TraefikTrafficRouting struct {
 	// TraefikServiceName refer to the name of the Traefik service used to route traffic to the service
 	WeightedTraefikServiceName string `json:"weightedTraefikServiceName" protobuf:"bytes,1,name=weightedTraefikServiceName"`
+}
+
+// ApisixTrafficRouting defines the configuration required to use APISIX as traffic router
+type ApisixTrafficRouting struct {
+	// Route references an Apisix Route to modify to shape traffic
+	Route *ApisixRoute `json:"route,omitempty" protobuf:"bytes,1,opt,name=route"`
+}
+
+// ApisixRoute holds information on the APISIX Route the rollout needs to modify
+type ApisixRoute struct {
+	// Name refer to the name of the APISIX Route used to route traffic to the service
+	Name string `json:"name" protobuf:"bytes,1,name=name"`
+	// RuleRef a list of the APISIX Route HTTP Rules used to route traffic to the service
+	Rules []string `json:"rules,omitempty" protobuf:"bytes,2,rep,name=rules"`
 }
 
 // AmbassadorTrafficRouting defines the configuration required to use Ambassador as traffic
@@ -430,6 +452,8 @@ type IstioVirtualService struct {
 	Routes []string `json:"routes,omitempty" protobuf:"bytes,2,rep,name=routes"`
 	// A list of TLS/HTTPS routes within VirtualService to edit. If omitted, VirtualService must have a single route of this type.
 	TLSRoutes []TLSRoute `json:"tlsRoutes,omitempty" protobuf:"bytes,3,rep,name=tlsRoutes"`
+	// A list of TCP routes within VirtualService to edit. If omitted, VirtualService must have a single route of this type.
+	TCPRoutes []TCPRoute `json:"tcpRoutes,omitempty" protobuf:"bytes,4,rep,name=tcpRoutes"`
 }
 
 // TLSRoute holds the information on the virtual service's TLS/HTTPS routes that are desired to be matched for changing weights.
@@ -438,6 +462,12 @@ type TLSRoute struct {
 	Port int64 `json:"port,omitempty" protobuf:"bytes,1,opt,name=port"`
 	// A list of all the SNI Hosts of the TLS Route desired to be matched in the given Istio VirtualService.
 	SNIHosts []string `json:"sniHosts,omitempty" protobuf:"bytes,2,rep,name=sniHosts"`
+}
+
+// TCPRoute holds the information on the virtual service's TCP routes that are desired to be matched for changing weights.
+type TCPRoute struct {
+	// Port number of the TCP Route desired to be matched in the given Istio VirtualService.
+	Port int64 `json:"port,omitempty" protobuf:"bytes,1,opt,name=port"`
 }
 
 // IstioDestinationRule is a reference to an Istio DestinationRule to modify and shape traffic
@@ -1015,4 +1045,8 @@ type RolloutList struct {
 	metav1.ListMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Rollout `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+type RollbackWindowSpec struct {
+	Revisions int32 `json:"revisions,omitempty" protobuf:"varint,1,opt,name=revisions"`
 }

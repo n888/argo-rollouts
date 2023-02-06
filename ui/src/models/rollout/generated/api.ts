@@ -218,6 +218,38 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1AntiAffinit
 /**
  * 
  * @export
+ * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute
+ */
+export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute {
+    /**
+     * 
+     * @type {string}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute
+     */
+    name?: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute
+     */
+    rules?: Array<string>;
+}
+/**
+ * 
+ * @export
+ * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixTrafficRouting
+ */
+export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixTrafficRouting {
+    /**
+     * 
+     * @type {GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixTrafficRouting
+     */
+    route?: GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixRoute;
+}
+/**
+ * 
+ * @export
  * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1AppMeshTrafficRouting
  */
 export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1AppMeshTrafficRouting {
@@ -633,6 +665,12 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1CanaryStrat
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1CanaryStrategy
      */
     pingPong?: GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1PingPongSpec;
+    /**
+     * 
+     * @type {number}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1CanaryStrategy
+     */
+    minPodsPerReplicaSet?: number;
 }
 /**
  * DryRun defines the settings for running the analysis in Dry-Run mode.
@@ -753,6 +791,12 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1IstioVirtua
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1IstioVirtualService
      */
     tlsRoutes?: Array<GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TLSRoute>;
+    /**
+     * A list of TCP routes within VirtualService to edit. If omitted, VirtualService must have a single route of this type.
+     * @type {Array<GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TCPRoute>}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1IstioVirtualService
+     */
+    tcpRoutes?: Array<GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TCPRoute>;
 }
 /**
  * 
@@ -912,6 +956,19 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1PreferredDu
  * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RequiredDuringSchedulingIgnoredDuringExecution
  */
 export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RequiredDuringSchedulingIgnoredDuringExecution {
+}
+/**
+ * 
+ * @export
+ * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RollbackWindowSpec
+ */
+export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RollbackWindowSpec {
+    /**
+     * 
+     * @type {number}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RollbackWindowSpec
+     */
+    revisions?: number;
 }
 /**
  * 
@@ -1231,6 +1288,12 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutSpec
     minReadySeconds?: number;
     /**
      * 
+     * @type {GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RollbackWindowSpec}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutSpec
+     */
+    rollbackWindow?: GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RollbackWindowSpec;
+    /**
+     * 
      * @type {GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutStrategy}
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutSpec
      */
@@ -1502,6 +1565,12 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutTraf
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutTrafficRouting
      */
     managedRoutes?: Array<GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1MangedRoutes>;
+    /**
+     * 
+     * @type {GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixTrafficRouting}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1RolloutTrafficRouting
+     */
+    apisix?: GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ApisixTrafficRouting;
 }
 /**
  * 
@@ -1659,6 +1728,19 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1StringMatch
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1StringMatch
      */
     regex?: string;
+}
+/**
+ * TCPRoute holds the information on the virtual service's TCP routes that are desired to be matched for changing weights.
+ * @export
+ * @interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TCPRoute
+ */
+export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TCPRoute {
+    /**
+     * Port number of the TCP Route desired to be matched in the given Istio VirtualService.
+     * @type {string}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1TCPRoute
+     */
+    port?: string;
 }
 /**
  * TLSRoute holds the information on the virtual service's TLS/HTTPS routes that are desired to be matched for changing weights.

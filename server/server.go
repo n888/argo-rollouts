@@ -2,13 +2,10 @@ package server
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
-	"path"
-	"regexp"
 	"strings"
 	"time"
 
@@ -47,9 +44,6 @@ import (
 	versionutils "github.com/argoproj/argo-rollouts/utils/version"
 )
 
-//go:embed static/*
-var static embed.FS //nolint
-
 var backoff = wait.Backoff{
 	Steps:    5,
 	Duration: 500 * time.Millisecond,
@@ -81,13 +75,6 @@ func NewServer(o ServerOptions) *ArgoRolloutsServer {
 	return &ArgoRolloutsServer{Options: o}
 }
 
-var re = regexp.MustCompile(`<base href=".*".*/>`)
-
-func withRootPath(fileContent []byte, rootpath string) []byte {
-	var temp = re.ReplaceAllString(string(fileContent), `<base href="`+path.Clean("/"+rootpath)+`/" />`)
-	return []byte(temp)
-}
-
 func (s *ArgoRolloutsServer) newHTTPServer(ctx context.Context, port int) *http.Server {
 	mux := http.NewServeMux()
 	endpoint := fmt.Sprintf("0.0.0.0:%d", port)
@@ -117,6 +104,7 @@ func (s *ArgoRolloutsServer) newHTTPServer(ctx context.Context, port int) *http.
 		panic(err)
 	}
 
+<<<<<<< HEAD
 	var handler http.Handler = gwmux
 
 	mux.Handle("/api/", handler)
@@ -186,6 +174,11 @@ func (s *ArgoRolloutsServer) newHTTPServer(ctx context.Context, port int) *http.
 
 		w.Write(fileBytes)
 	})
+=======
+	var apiHandler http.Handler = gwmux
+	mux.Handle("/api/", apiHandler)
+	mux.HandleFunc("/", s.staticFileHttpHandler)
+>>>>>>> v1.4.0
 
 	return &httpS
 }
