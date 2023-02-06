@@ -67,9 +67,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},prefix=v,value=${{ github.event.inputs.tag }}
-          flavor: |
-            latest=false
+            ${{ github.event.inputs.tag }}
 
 #      - name: Docker meta (plugin)
 #        id: plugin-meta
