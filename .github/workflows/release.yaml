@@ -59,15 +59,15 @@ jobs:
 #          flavor: |
 #            latest=false
 
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            ${{ github.event.inputs.tag }}
+#      # Extract metadata (tags, labels) for Docker
+#      # https://github.com/docker/metadata-action
+#      - name: Extract Docker metadata
+#        id: meta
+#        uses: docker/metadata-action@v4
+#        with:
+#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+#          tags: |
+#            ${{ github.event.inputs.tag }}
 
 #      - name: Docker meta (plugin)
 #        id: plugin-meta
@@ -119,11 +119,9 @@ jobs:
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v4.0.0
         with:
           context: .
-          platforms: linux/amd64
-        # platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.controller-meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ github.event.inputs.tag }}
         # provenance: false
         # sbom: false
 
