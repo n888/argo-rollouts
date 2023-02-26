@@ -101,17 +101,7 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://argo-rollouts.readthedocs.io/analysis/plugins/</loc>
-         <lastmod>2023-02-26</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
          <loc>https://argo-rollouts.readthedocs.io/analysis/prometheus/</loc>
-         <lastmod>2023-02-26</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://argo-rollouts.readthedocs.io/analysis/skywalking/</loc>
          <lastmod>2023-02-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
