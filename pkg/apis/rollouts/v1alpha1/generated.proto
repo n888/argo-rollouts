@@ -290,6 +290,8 @@ message AwsResourceRef {
   optional string name = 1;
 
   optional string arn = 2;
+
+  optional string fullName = 3;
 }
 
 // BlueGreenStatus status fields that only pertain to the blueGreen rollout
@@ -976,6 +978,15 @@ message MetricProvider {
 
   // Influxdb specifies the influxdb metric to query
   optional InfluxdbMetric influxdb = 10;
+
+  // SkyWalking specifies the skywalking metric to query
+  optional SkyWalkingMetric skywalking = 11;
+
+  // +kubebuilder:validation:Schemaless
+  // +kubebuilder:pruning:PreserveUnknownFields
+  // +kubebuilder:validation:Type=object
+  // Plugin specifies the hashicorp go-plugin metric to query
+  map<string, bytes> plugin = 12;
 }
 
 // MetricResult contain a list of the most recent measurements for a single metric along with
@@ -1572,6 +1583,14 @@ message SetMirrorRoute {
   // Service string `json:"service" protobuf:"bytes,3,opt,name=service"`
   // Percentage What percent of the traffic that matched the rules should be mirrored
   optional int32 percentage = 4;
+}
+
+message SkyWalkingMetric {
+  optional string address = 1;
+
+  optional string query = 2;
+
+  optional string interval = 3;
 }
 
 message StickinessConfig {

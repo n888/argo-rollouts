@@ -58,7 +58,7 @@ type RolloutSpec struct {
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty" protobuf:"varint,4,opt,name=minReadySeconds"`
 	// The window in which a rollback will be fast tracked (fully promoted)
 	// +optional
-	RollbackWindow *RollbackWindowSpec `json:"rollbackWindow,omtempty" protobuf:"bytes,13,opt,name=rollbackWindow"`
+	RollbackWindow *RollbackWindowSpec `json:"rollbackWindow,omitempty" protobuf:"bytes,13,opt,name=rollbackWindow"`
 	// The deployment strategy to use to replace existing pods with new ones.
 	// +optional
 	Strategy RolloutStrategy `json:"strategy" protobuf:"bytes,5,opt,name=strategy"`
@@ -987,8 +987,9 @@ type ALBStatus struct {
 }
 
 type AwsResourceRef struct {
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	ARN  string `json:"arn" protobuf:"bytes,2,opt,name=arn"`
+	Name     string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	ARN      string `json:"arn" protobuf:"bytes,2,opt,name=arn"`
+	FullName string `json:"fullName" protobuf:"bytes,3,opt,name=fullName"`
 }
 
 // RolloutConditionType defines the conditions of Rollout

@@ -24,7 +24,7 @@ RUN cd ${GOPATH}/src/dummy && \
 ####################################################################################################
 # UI build stage
 ####################################################################################################
-FROM --platform=$BUILDPLATFORM docker.io/library/node:12.18.4 as argo-rollouts-ui
+FROM --platform=$BUILDPLATFORM docker.io/library/node:18 as argo-rollouts-ui
 
 WORKDIR /src
 ADD ["ui/package.json", "ui/yarn.lock", "./"]
@@ -84,7 +84,7 @@ CMD ["dashboard"]
 ####################################################################################################
 # Final image
 ####################################################################################################
-FROM scratch
+FROM gcr.io/distroless/static-debian11
 
 COPY --from=argo-rollouts-build /go/src/github.com/argoproj/argo-rollouts/dist/rollouts-controller /bin/
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
