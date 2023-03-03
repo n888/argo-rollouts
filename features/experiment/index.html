@@ -11,13 +11,13 @@
         <link rel="canonical" href="https://argo-rollouts.readthedocs.io/features/experiment/">
       
       
-        <link rel="prev" href="../../analysis/influxdb/">
+        <link rel="prev" href="../../analysis/skywalking/">
       
       
         <link rel="next" href="../notifications/">
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.15">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.0">
     
     
       
@@ -25,7 +25,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.113286f1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.402914a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.a0c5b2b5.min.css">
@@ -99,7 +99,9 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Argo Rollouts - Kubernetes Progressive Delivery Controller" class="md-header__button md-logo" aria-label="Argo Rollouts - Kubernetes Progressive Delivery Controller" data-md-component="logo">
       
@@ -832,6 +834,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../../traffic-management/plugins.md" class="md-nav__link">
+        Plugins
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../traffic-management/smi/" class="md-nav__link">
         SMI
       </a>
@@ -897,6 +913,20 @@
     <li class="md-nav__item">
       <a href="../analysis/" class="md-nav__link">
         Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/plugins/" class="md-nav__link">
+        Plugins
       </a>
     </li>
   
@@ -1037,6 +1067,20 @@
     <li class="md-nav__item">
       <a href="../../analysis/influxdb/" class="md-nav__link">
         InfluxDB
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/skywalking/" class="md-nav__link">
+        Apache SkyWalking
       </a>
     </li>
   
@@ -2166,6 +2210,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../plugins/" class="md-nav__link">
+        Plugins
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -2308,7 +2366,7 @@
 <p>The Experiment CRD allows users to have ephemeral runs of one or more ReplicaSets. In addition to
 running ephemeral ReplicaSets, the Experiment CRD can launch AnalysisRuns alongside the ReplicaSets.
 Generally, those AnalysisRun is used to confirm that new ReplicaSets are running as expected.</p>
-<p>A Service routing traffic to the Experiment ReplicaSet is also generated.</p>
+<p>A Service routing traffic to the Experiment ReplicaSet is also generated if a weight for that experiment is set.</p>
 <h2 id="use-cases-of-experiments">Use cases of Experiments<a class="headerlink" href="#use-cases-of-experiments" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
@@ -2538,7 +2596,7 @@ to <code>experiment-baseline</code>, leaving the remaining 90% of traffic to the
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>When a weighted experiment step with traffic routing is used, a
-Service is auto-created for each experiment template. The traffic routers use
+service is auto-created for each experiment template. The traffic routers use
 this service to send traffic to the experiment pods.</p>
 </div>
 <p>By default, the generated Service has the name of the ReplicaSet and inherits
@@ -2586,7 +2644,7 @@ or <code>{{templates.canary.replicaset.name}}</code> variables respectively.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.2a6f1dda.min.js"></script>
+      <script src="../../assets/javascripts/bundle.ce72ebac.min.js"></script>
       
         <script src="../../assets/versions.js"></script>
       
