@@ -51,10 +51,12 @@ nav:
   - AWS ALB: features/traffic-management/alb.md
   - Istio: features/traffic-management/istio.md
   - NGINX: features/traffic-management/nginx.md
+  - Plugins: traffic-management/plugins.md
   - SMI: features/traffic-management/smi.md
   - Traefik: features/traffic-management/traefik.md
 - Analysis:
   - Overview: features/analysis.md
+  - Plugins: analysis/plugins.md
   - Prometheus: analysis/prometheus.md
   - DataDog: analysis/datadog.md
   - NewRelic: analysis/newrelic.md
@@ -65,6 +67,7 @@ nav:
   - CloudWatch: analysis/cloudwatch.md
   - Graphite: analysis/graphite.md
   - InfluxDB: analysis/influxdb.md
+  - Apache SkyWalking: analysis/skywalking.md
 - Experiments: features/experiment.md
 - Notifications:
   - Overview: features/notifications.md
@@ -132,6 +135,7 @@ nav:
   - Contribution Guide: CONTRIBUTING.md
   - Environment Setup: getting-started/setup/index.md
   - Releasing: releasing.md
+  - Plugins: plugins.md
 - Releases ⧉: https://github.com/argoproj/argo-rollouts/releases
 - Roadmap ⧉: https://github.com/argoproj/argo-rollouts/milestones
 - Blog ⧉: https://blog.argoproj.io/
