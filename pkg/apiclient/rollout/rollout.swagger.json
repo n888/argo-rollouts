@@ -517,6 +517,10 @@
           "type": "string",
           "title": "Ingress refers to the name of an `Ingress` resource in the same namespace as the `Rollout`"
         },
+        "additionalIngresses": {
+          "type": "array",
+          "title": "AdditionalIngresses refers to the names of `Ingress` resources in the same namespace as the `Rollout` in a multi ingress scenario\n+optional"
+        },
         "servicePort": {
           "type": "integer",
           "format": "int32",

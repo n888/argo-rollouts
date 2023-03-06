@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"k8s.io/utils/strings/slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -224,17 +225,34 @@ func ValidateIngress(rollout *v1alpha1.Rollout, ingress *ingressutil.Ingress) fi
 		fldPath = fldPath.Child("nginx").Child("stableIngress")
 		serviceName = rollout.Spec.Strategy.Canary.StableService
 		ingressName = rollout.Spec.Strategy.Canary.TrafficRouting.Nginx.StableIngress
-	} else if rollout.Spec.Strategy.Canary.TrafficRouting.ALB != nil {
-		fldPath = fldPath.Child("alb").Child("ingress")
-		ingressName = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress
-		serviceName = rollout.Spec.Strategy.Canary.StableService
-		if rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService != "" {
-			serviceName = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService
-		}
 
-	} else {
-		return allErrs
+		allErrs = reportErrors(ingress, serviceName, ingressName, fldPath, allErrs)
+	} else if rollout.Spec.Strategy.Canary.TrafficRouting.ALB != nil {
+		additionalIngresses := rollout.Spec.Strategy.Canary.TrafficRouting.ALB.AdditionalIngresses
+		// If there are additional stable ALB ingresses, and one of them is being validated,
+		// use that ingress name.
+		if len(additionalIngresses) > 0 && slices.Contains(additionalIngresses, ingress.GetName()) {
+			fldPath = fldPath.Child("alb").Child("additionalIngresses")
+			serviceName = rollout.Spec.Strategy.Canary.StableService
+			if rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService != "" {
+				serviceName = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService
+			}
+			ingressName = ingress.GetName()
+			allErrs = reportErrors(ingress, serviceName, ingressName, fldPath, allErrs)
+		} else {
+			fldPath = fldPath.Child("alb").Child("ingress")
+			serviceName = rollout.Spec.Strategy.Canary.StableService
+			if rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService != "" {
+				serviceName = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.RootService
+			}
+			ingressName = rollout.Spec.Strategy.Canary.TrafficRouting.ALB.Ingress
+			allErrs = reportErrors(ingress, serviceName, ingressName, fldPath, allErrs)
+		}
 	}
+	return allErrs
+}
+
+func reportErrors(ingress *ingressutil.Ingress, serviceName, ingressName string, fldPath *field.Path, allErrs field.ErrorList) field.ErrorList {
 	if !ingressutil.HasRuleWithService(ingress, serviceName) {
 		msg := fmt.Sprintf("ingress `%s` has no rules using service %s backend", ingress.GetName(), serviceName)
 		allErrs = append(allErrs, field.Invalid(fldPath, ingressName, msg))

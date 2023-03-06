@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -262,6 +263,25 @@ func getRollout() *v1alpha1.Rollout {
 	}
 }
 
+func getRolloutMultiALBIngress() *v1alpha1.Rollout {
+	return &v1alpha1.Rollout{
+		Spec: v1alpha1.RolloutSpec{
+			Strategy: v1alpha1.RolloutStrategy{
+				Canary: &v1alpha1.CanaryStrategy{
+					StableService: "stable-service-name",
+					CanaryService: "canary-service-name",
+					TrafficRouting: &v1alpha1.RolloutTrafficRouting{
+						ALB: &v1alpha1.ALBTrafficRouting{
+							Ingress:             "alb-ingress",
+							AdditionalIngresses: []string{"alb-multi-ingress-1", "alb-multi-ingress-2"},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func getIngress() *v1beta1.Ingress {
 	return &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -286,6 +306,35 @@ func getIngress() *v1beta1.Ingress {
 	}
 }
 
+func extensionsIngress(name string, port int, serviceName string) *extensionsv1beta1.Ingress {
+	return &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{
+				{
+					Host: "fakehost.example.com",
+					IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+						HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+							Paths: []extensionsv1beta1.HTTPIngressPath{
+								{
+									Path: "/foo",
+									Backend: extensionsv1beta1.IngressBackend{
+										ServiceName: serviceName,
+										ServicePort: intstr.FromInt(port),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func getServiceWithType() ServiceWithType {
 	return ServiceWithType{
 		Service: &corev1.Service{
@@ -306,6 +355,83 @@ func TestValidateRolloutReferencedResources(t *testing.T) {
 	}
 	allErrs := ValidateRolloutReferencedResources(getRollout(), refResources)
 	assert.Empty(t, allErrs)
+}
+
+func TestValidateRolloutReferencedResourcesMultiALBIngress(t *testing.T) {
+	stableService := "stable-service-name"
+	wrongService := "wrong-stable-service"
+	ingressKey := "spec.strategy.canary.trafficRouting.alb.ingress"
+	additionalIngressKey := "spec.strategy.canary.trafficRouting.alb.additionalIngresses"
+	tests := []struct {
+		name           string
+		service1       string
+		service2       string
+		service3       string
+		expectedErrors [][]string
+	}{
+		{
+			"Validate multiple ALB Ingresses successfully",
+			stableService,
+			stableService,
+			stableService,
+			[][]string{},
+		},
+		{
+			"Validate multiple ALB Ingresses -- primary fails",
+			wrongService,
+			stableService,
+			stableService,
+			[][]string{{ingressKey, "alb-ingress"}},
+		},
+		{
+			"Validate multiple ALB Ingresses -- additional ingress fails",
+			stableService,
+			wrongService,
+			stableService,
+			[][]string{{additionalIngressKey, "alb-multi-ingress-1"}},
+		},
+		{
+			"Validate multiple ALB Ingresses -- all ingresses fail fails",
+			wrongService,
+			wrongService,
+			wrongService,
+			[][]string{
+				{ingressKey, "alb-ingress"},
+				{additionalIngressKey, "alb-multi-ingress-1"},
+				{additionalIngressKey, "alb-multi-ingress-2"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stable := extensionsIngress("alb-ingress", 80, test.service1)
+			stableIngress := ingressutil.NewLegacyIngress(stable)
+			additionalStable1 := extensionsIngress("alb-multi-ingress-1", 80, test.service2)
+			additionalStableIngress1 := ingressutil.NewLegacyIngress(additionalStable1)
+			additionalStable2 := extensionsIngress("alb-multi-ingress-2", 80, test.service3)
+			additionalStableIngress2 := ingressutil.NewLegacyIngress(additionalStable2)
+			refResources := ReferencedResources{
+				AnalysisTemplatesWithType: []AnalysisTemplatesWithType{getAnalysisTemplatesWithType()},
+				Ingresses:                 []ingressutil.Ingress{*stableIngress, *additionalStableIngress1, *additionalStableIngress2},
+				ServiceWithType:           []ServiceWithType{getServiceWithType()},
+				VirtualServices:           nil,
+			}
+
+			allErrs := ValidateRolloutReferencedResources(getRolloutMultiALBIngress(), refResources)
+			if len(test.expectedErrors) > 0 {
+				assert.Len(t, allErrs, len(test.expectedErrors), "Main stable ingress should fail")
+				for i, e := range test.expectedErrors {
+					assert.Equal(t, field.ErrorType("FieldValueInvalid"), allErrs[i].Type, "Should be bad service name for ingress")
+					assert.Equal(t, e[0], allErrs[i].Field, "Bad service name for ingress")
+					assert.Equal(t, e[1], allErrs[i].BadValue, "Bad service name for ingress")
+				}
+			} else {
+				assert.Empty(t, allErrs)
+			}
+		})
+	}
 }
 
 func TestValidateAnalysisTemplatesWithType(t *testing.T) {
