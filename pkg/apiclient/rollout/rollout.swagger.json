@@ -519,6 +519,9 @@
         },
         "additionalIngresses": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "AdditionalIngresses refers to the names of `Ingress` resources in the same namespace as the `Rollout` in a multi ingress scenario\n+optional"
         },
         "servicePort": {
