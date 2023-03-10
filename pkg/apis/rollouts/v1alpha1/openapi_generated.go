@@ -188,6 +188,21 @@ func schema_pkg_apis_rollouts_v1alpha1_ALBTrafficRouting(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"additionalIngresses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AdditionalIngresses refers to the names of `Ingress` resources in the same namespace as the `Rollout` in a multi ingress scenario",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 					"servicePort": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ServicePort refers to the port that the Ingress action should route traffic to",

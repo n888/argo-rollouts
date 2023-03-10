@@ -11731,14 +11731,14 @@ spec:
                         properties:
                           alb:
                             properties:
-                              annotationPrefix:
-                                type: string
-                              ingress:
-                                type: string
                               additionalIngresses:
                                 items:
                                   type: string
                                 type: array
+                              annotationPrefix:
+                                type: string
+                              ingress:
+                                type: string
                               rootService:
                                 type: string
                               servicePort:
