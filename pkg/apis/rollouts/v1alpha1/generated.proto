@@ -44,6 +44,10 @@ message ALBTrafficRouting {
   // Ingress refers to the name of an `Ingress` resource in the same namespace as the `Rollout`
   optional string ingress = 1;
 
+  // AdditionalIngresses refers to the names of `Ingress` resources in the same namespace as the `Rollout` in a multi ingress scenario
+  // +optional
+  repeated string additionalIngresses = 6;
+
   // ServicePort refers to the port that the Ingress action should route traffic to
   optional int32 servicePort = 2;
 

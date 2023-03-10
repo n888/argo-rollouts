@@ -116,6 +116,12 @@ export interface GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ALBTrafficR
     ingress?: string;
     /**
      * 
+     * @type {Array<string>}
+     * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ALBTrafficRouting
+     */
+    additionalIngresses?: Array<string>;
+    /**
+     * 
      * @type {number}
      * @memberof GithubComArgoprojArgoRolloutsPkgApisRolloutsV1alpha1ALBTrafficRouting
      */
