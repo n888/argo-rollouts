@@ -358,59 +358,26 @@ func TestValidateRolloutReferencedResources(t *testing.T) {
 }
 
 func TestValidateRolloutReferencedResourcesMultiALBIngress(t *testing.T) {
-	stableService := "stable-service-name"
-	wrongService := "wrong-stable-service"
-	ingressKey := "spec.strategy.canary.trafficRouting.alb.ingress"
-	additionalIngressKey := "spec.strategy.canary.trafficRouting.alb.additionalIngresses"
-	tests := []struct {
-		name           string
+	type fixture struct {
 		service1       string
 		service2       string
 		service3       string
 		expectedErrors [][]string
-	}{
-		{
-			"Validate multiple ALB Ingresses successfully",
-			stableService,
-			stableService,
-			stableService,
-			[][]string{},
-		},
-		{
-			"Validate multiple ALB Ingresses -- primary fails",
-			wrongService,
-			stableService,
-			stableService,
-			[][]string{{ingressKey, "alb-ingress"}},
-		},
-		{
-			"Validate multiple ALB Ingresses -- additional ingress fails",
-			stableService,
-			wrongService,
-			stableService,
-			[][]string{{additionalIngressKey, "alb-multi-ingress-1"}},
-		},
-		{
-			"Validate multiple ALB Ingresses -- all ingresses fail fails",
-			wrongService,
-			wrongService,
-			wrongService,
-			[][]string{
-				{ingressKey, "alb-ingress"},
-				{additionalIngressKey, "alb-multi-ingress-1"},
-				{additionalIngressKey, "alb-multi-ingress-2"},
-			},
-		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	stableService := "stable-service-name"
+	wrongService := "wrong-stable-service"
+	ingressKey := "spec.strategy.canary.trafficRouting.alb.ingress"
+	additionalIngressKey := "spec.strategy.canary.trafficRouting.alb.additionalIngresses"
+
+	test := func(name string, t *testing.T, fixture *fixture) {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			stable := extensionsIngress("alb-ingress", 80, test.service1)
+			stable := extensionsIngress("alb-ingress", 80, fixture.service1)
 			stableIngress := ingressutil.NewLegacyIngress(stable)
-			additionalStable1 := extensionsIngress("alb-multi-ingress-1", 80, test.service2)
+			additionalStable1 := extensionsIngress("alb-multi-ingress-1", 80, fixture.service2)
 			additionalStableIngress1 := ingressutil.NewLegacyIngress(additionalStable1)
-			additionalStable2 := extensionsIngress("alb-multi-ingress-2", 80, test.service3)
+			additionalStable2 := extensionsIngress("alb-multi-ingress-2", 80, fixture.service3)
 			additionalStableIngress2 := ingressutil.NewLegacyIngress(additionalStable2)
 			refResources := ReferencedResources{
 				AnalysisTemplatesWithType: []AnalysisTemplatesWithType{getAnalysisTemplatesWithType()},
@@ -420,9 +387,9 @@ func TestValidateRolloutReferencedResourcesMultiALBIngress(t *testing.T) {
 			}
 
 			allErrs := ValidateRolloutReferencedResources(getRolloutMultiALBIngress(), refResources)
-			if len(test.expectedErrors) > 0 {
-				assert.Len(t, allErrs, len(test.expectedErrors), "Main stable ingress should fail")
-				for i, e := range test.expectedErrors {
+			if len(fixture.expectedErrors) > 0 {
+				assert.Len(t, allErrs, len(fixture.expectedErrors), "Main stable ingress should fail")
+				for i, e := range fixture.expectedErrors {
 					assert.Equal(t, field.ErrorType("FieldValueInvalid"), allErrs[i].Type, "Should be bad service name for ingress")
 					assert.Equal(t, e[0], allErrs[i].Field, "Bad service name for ingress")
 					assert.Equal(t, e[1], allErrs[i].BadValue, "Bad service name for ingress")
@@ -432,6 +399,15 @@ func TestValidateRolloutReferencedResourcesMultiALBIngress(t *testing.T) {
 			}
 		})
 	}
+
+	test("Validate multiple ALB Ingresses successfully", t, &fixture{stableService, stableService, stableService, [][]string{}})
+	test("Validate multiple ALB Ingresses -- primary fails", t, &fixture{wrongService, stableService, stableService, [][]string{{ingressKey, "alb-ingress"}}})
+	test("Validate multiple ALB Ingresses -- additional ingress fails", t, &fixture{stableService, wrongService, stableService, [][]string{{additionalIngressKey, "alb-multi-ingress-1"}}})
+	test("Validate multiple ALB Ingresses -- all ingresses fail fails", t, &fixture{wrongService, wrongService, wrongService, [][]string{
+		{ingressKey, "alb-ingress"},
+		{additionalIngressKey, "alb-multi-ingress-1"},
+		{additionalIngressKey, "alb-multi-ingress-2"},
+	}})
 }
 
 func TestValidateAnalysisTemplatesWithType(t *testing.T) {
